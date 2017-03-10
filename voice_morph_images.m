@@ -10,9 +10,8 @@
 
 % declare paths
 if isunix
-    DRIVE                               = strcat('/home/',getUserName);
-    HUMAN_DIR                           = fullfile(DRIVE,'Cloud2','movies','human');
-    VOICE_DIR                           = fullfile(HUMAN_DIR,'voices');
+    VOICE_DIR                           = fullfile(filesep,'home',getUserName,...
+                                            'Cloud2','movies','human','voices');
 else
     VOICE_DIR                           = 'K:\ownCloud\movies\human\voices';
     if ~exist(VOICE_DIR,'dir')
