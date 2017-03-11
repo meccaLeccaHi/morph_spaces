@@ -54,33 +54,32 @@ IMAGE_MAT.ORDER                         = VOICE_ORDER;
 addpath(genpath(fullfile(VOICE_DIR,'STRAIGHT_path_package')))
 
 % specify STRAIGHT-object files
-STR_OBJ_LIST                            = textscan(sprintf('StrObj%d.mat ',1:8),'%s');
-STRAIGHT_FILELIST                       = STR_OBJ_LIST{:};
-STRAIGHT_AVENUM                         = length(STRAIGHT_FILELIST);
-STRAIGHT_VOICENUM                       = length(VOICE_ORDER);
+foo                                     = textscan(sprintf('StrObj%d.mat ',1:8),'%s');
+STR_OBJ_LIST                            = foo{:};
+VOICENUM                                = length(STR_OBJ_LIST);
 
 % specify their corresponding anchors
 foo                                     = textscan(sprintf('targetAnchorStrObj%d.mat ',1:7),'%s');
 STR_ANCH_LIST                           = [{'referenceAnchorStrObj.mat'}; foo{:}];
 ANCHOR_FILELIST                         = STR_ANCH_LIST;
 
-STRAIGHT_FILENAMES                      = cell(1,length(STRAIGHT_FILELIST));
+STRAIGHT_FILENAMES                      = cell(1,length(STR_OBJ_LIST));
 for i = 1:length(STRAIGHT_FILENAMES)
-    load([STRAIGHT_DIR,STRAIGHT_FILELIST{i}])
+    load([STRAIGHT_DIR,STR_OBJ_LIST{i}])
     STRAIGHT_FILENAMES{i}               = STRAIGHTobject.dataFileName;
     STRAIGHTobject.morphingMenu.delete
 end
 
 % print table summarizing face-morphs
-T                                       = table(STRAIGHT_FILELIST,ANCHOR_FILELIST,'RowNames',STRAIGHT_FILENAMES);
+T                                       = table(STR_OBJ_LIST,ANCHOR_FILELIST,'RowNames',STRAIGHT_FILENAMES);
 disp(T)
 
 % save text file specifying details of voice morphs to be done
 SPECFILE_NAME                           = fullfile(STRAIGHT_DIR,'specification_file.txt');
 SPECFILE_ID                             = fopen(SPECFILE_NAME,'w');
-TEXTOUT                                 = [{['mRate ' repmat(sprintf('%.4f ',1/STRAIGHT_AVENUM),...
-    1,STRAIGHT_AVENUM)]}; {['STRAIGHTDirectory ' STRAIGHT_DIR]};
-    STRAIGHT_FILELIST; {['anchorStructDirectory ' ANCHOR_DIR]}; ANCHOR_FILELIST];
+TEXTOUT                                 = [{['mRate ' repmat(sprintf('%.4f ',1/VOICENUM),...
+    1,VOICENUM)]}; {['STRAIGHTDirectory ' STRAIGHT_DIR]};
+    STR_OBJ_LIST; {['anchorStructDirectory ' ANCHOR_DIR]}; ANCHOR_FILELIST];
 for ROW = 1:length(TEXTOUT)
     fprintf(SPECFILE_ID,'%s\n',TEXTOUT{ROW,:});
 end
@@ -91,7 +90,7 @@ VOICE_OBJ                               = temporallyStaticBatchMorphingR3(SPECFI
 FS                                      = VOICE_OBJ.synthStructure.samplingFrequency;
 
 %% create voice average
-MORPH_SPEC_AVE                          = ones(1,STRAIGHT_AVENUM)/STRAIGHT_AVENUM;
+MORPH_SPEC_AVE                          = ones(1,VOICENUM)/VOICENUM;
 MORPH_OBJ                               = staticMorphing(VOICE_OBJ.objectBundleSs,MORPH_SPEC_AVE);
 MORPH_AVE_SYNOUT                        = MORPH_OBJ.synthStructure.synthesisOut;
 
@@ -109,11 +108,11 @@ STEP_NUM                                = 4;
 STEPS                                   = 1/STEP_NUM:1/STEP_NUM:1;
 
 %% step through voice identities
-for I = 1:STRAIGHT_VOICENUM
+for I = 1:length(VOICE_ORDER)
     
     % create empty vectors for level of each voice
-    MORPH_SPEC_RAD                      = nan(1,STRAIGHT_AVENUM);
-    MORPH_SPEC_TAN                      = nan(1,STRAIGHT_AVENUM);
+    MORPH_SPEC_RAD                      = nan(1,VOICENUM);
+    MORPH_SPEC_TAN                      = nan(1,VOICENUM);
     
     % step through morph levels along each trajectory
     for II = 1:length(STEPS)
@@ -121,8 +120,8 @@ for I = 1:STRAIGHT_VOICENUM
         %% radial trajectory
         % specificy voice identity content
         MORPH_SPEC_RAD(VOICE_ORDER(I))  = STEPS(II);
-        GROUP_VOICES                    = setdiff(1:STRAIGHT_AVENUM,VOICE_ORDER(I));
-        MORPH_SPEC_RAD(GROUP_VOICES)    = (1-STEPS(II))/(STRAIGHT_AVENUM-1);
+        GROUP_VOICES                    = setdiff(1:VOICENUM,VOICE_ORDER(I));
+        MORPH_SPEC_RAD(GROUP_VOICES)    = (1-STEPS(II))/(VOICENUM-1);
         
         % create voice morph
         MORPH_OUT_RAD                   = staticMorphing(VOICE_OBJ.objectBundleSs,MORPH_SPEC_RAD);
@@ -133,17 +132,15 @@ for I = 1:STRAIGHT_VOICENUM
         IMAGE_MAT.RAD{I,II}             = cat(3,SPECT_IMG_RAD,ALPHA_RAD);
         
         %% save rad voice as sound file
-        FILE_NAME                       = fullfile(STRAIGHT_DIR,'voice_stim','rad',...
-                                    ['voice' num2str(VOICE_ORDER(I))],...
-                                    ['voice' num2str(VOICE_ORDER(I)) '_' ...
+        FILE_NAME                       = fullfile(STRAIGHT_DIR,'voice_stim',...
+                                    ['voice' num2str(VOICE_ORDER(I)) '_rad_' ...
                                     sprintf('%03d',round(STEPS(II)*100)) '%.wav']);
         audiowrite(FILE_NAME,MORPH_OUT_RAD_SYNOUT,FS)
         disp(['file saved: ' FILE_NAME])
         
 %         % make speech-shaped noise and save as sound file
-%         FILE_NAME                       = fullfile(STRAIGHT_DIR,'voice_stim','rad',...
-%                                     ['voice' num2str(VOICE_ORDER(I))],...
-%                                     ['voice' num2str(VOICE_ORDER(I)) '_' ...
+%         FILE_NAME                       = fullfile(STRAIGHT_DIR,'voice_stim',...
+%                                     ['voice' num2str(VOICE_ORDER(I)) '_rad_' ...
 %                                     sprintf('%03d',round(STEPS(II)*100)) '%_noisy.wav']);
 %         audiowrite(FILE_NAME,SSN(MORPH_OUT_RAD_SYNOUT),FS)
         
@@ -153,7 +150,7 @@ for I = 1:STRAIGHT_VOICENUM
             % set up morph for current tangential voice pair
             MORPH_SPEC_TAN(VOICE_CIRC(I:I+1))         = STEPS([II length(STEPS)-II]);
             % set others to zero
-            MORPH_SPEC_TAN(setdiff(1:STRAIGHT_AVENUM,FOO))         = 0;
+            MORPH_SPEC_TAN(setdiff(1:VOICENUM,VOICE_CIRC(I:I+1)))   = 0;
             
             % create voice morph
             MORPH_OUT_TAN               = staticMorphing(VOICE_OBJ.objectBundleSs,MORPH_SPEC_TAN);
@@ -166,17 +163,15 @@ for I = 1:STRAIGHT_VOICENUM
             %% save tan morph voice as sound file
             if II<4
                 
-                FILE_NAME               = fullfile(STRAIGHT_DIR,'voice_stim','tan',...
-                    ['voice' num2str(VOICE_ORDER(I))],...
-                    ['voice' num2str(VOICE_ORDER(I)) '_' ...
+                FILE_NAME               = fullfile(STRAIGHT_DIR,'voice_stim',...
+                    ['voice' num2str(VOICE_ORDER(I)) '_tan_' ...
                     sprintf('%03d',round(STEPS(end-II)*100)) '%.wav']);
                 audiowrite(FILE_NAME,MORPH_OUT_TAN_SYNOUT,FS)
                 disp(['file saved: ' FILE_NAME])
                 
 %                 % make speech-shaped noise and save as sound file
-%                 FILE_NAME               = fullfile(STRAIGHT_DIR,'voice_stim','tan',...
-%                                     ['voice' num2str(VOICE_ORDER(I))],...
-%                                     ['voice' num2str(VOICE_ORDER(I)) '_' ...
+%                 FILE_NAME               = fullfile(STRAIGHT_DIR,'voice_stim',...
+%                                     ['voice' num2str(VOICE_ORDER(I)) '_tan_' ...
 %                                     sprintf('%03d',round(STEPS(II)*100)) '%_noisy.wav']);
 %                 audiowrite(FILE_NAME,SSN(MORPH_OUT_TAN_SYNOUT),FS)
 
