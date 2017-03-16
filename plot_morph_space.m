@@ -74,6 +74,7 @@ for FRAME_NUM = FRAME_LIST
         % read-in image matrix
         switch(MODALITY)
             case 'f'
+                addpath([MAIN_DIR '/faces/faceMorphing/'])
                 IMAGE_MAT                               = face_morph_images(FRAME_NUM);
             case 'v'
                 load([MAIN_DIR '/voices/voice_overs/syllable/voice_morph_space.mat']);
